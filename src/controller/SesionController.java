@@ -1,9 +1,8 @@
-
 package controller;
 
 import model.BaseDatos;
-import model.Vendedor;
 import model.Usuario;
+import model.Vendedor;
 
 public class SesionController {
     private BaseDatos baseDatos;       // Referencia a la base de datos
@@ -29,21 +28,20 @@ public class SesionController {
         this.usuarioActual = null;
     }
 
-    // Validar las credenciales del usuario
-    public boolean validarUsuario(String username, String password) {
-        // Autenticar credenciales usando la base de datos
-        Usuario usuario = baseDatos.autenticar(username, password);
-        if (usuario != null) {
-            iniciarSesion(usuario); // Si las credenciales son válidas, iniciar sesión
-            return true;
+    // Validar las credenciales del usuario (unificado para usuarios y vendedores)
+    public Usuario autenticar(String username, String password) {
+        Usuario usuario = baseDatos.obtenerUsuario(username);
+        if (usuario != null && usuario.getPassword().equals(password)) {
+            iniciarSesion(usuario);
+            return usuario;
         }
-        return false; // Credenciales inválidas
+        return null;
     }
 
     // Verificar si el usuario autenticado es un vendedor
     public boolean esVendedor(String username) {
         Usuario usuario = baseDatos.obtenerUsuario(username);
-        return usuario != null && "vendedor".equals(usuario.getRole()); // Comprobar el tipo de usuario
+        return usuario != null && "vendedor".equals(usuario.getRole());
     }
 
     // Método que devuelve el vendedor si las credenciales son correctas
