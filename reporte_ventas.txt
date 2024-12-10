@@ -1,0 +1,9 @@
+Reporte de Ventas
+Fecha de Generación: 07/12/2024 23:48:07
+-------------------------
+Producto             Cantidad   Precio Unitario      Total     
+laptop               12         1,00                 12,00     
+-------------------------
+TOTAL GENERAL: 12,00
+-------------------------
+¡Gracias por usar el sistema!
