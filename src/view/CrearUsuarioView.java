@@ -6,6 +6,7 @@ import model.Usuario;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import static javax.swing.WindowConstants.DISPOSE_ON_CLOSE;
 
 public class CrearUsuarioView extends JFrame {
     private JTextField usernameField;

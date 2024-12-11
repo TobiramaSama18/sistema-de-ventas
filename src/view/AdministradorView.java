@@ -2,6 +2,7 @@ package view;
 
 import controller.SesionController;
 import javax.swing.*;
+import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 import javax.swing.table.DefaultTableModel;
 import model.BaseDatos;
 import model.Venta;
