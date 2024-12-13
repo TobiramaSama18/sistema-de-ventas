@@ -1,7 +1,9 @@
 package view;
 
 import controller.UsuarioController;
-import model.Usuario;
+import model.Vendedor;
+import model.Administrador;
+import model.Role;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -76,7 +78,7 @@ public class RegistroView extends JFrame {
     private void registrarUsuario() {
         String username = usernameField.getText();
         String password = new String(passwordField.getPassword());
-        String role = (String) roleComboBox.getSelectedItem();
+        String roleString = (String) roleComboBox.getSelectedItem();
 
         // Verificar si los campos están vacíos
         if (username.isEmpty() || password.isEmpty()) {
@@ -84,22 +86,33 @@ public class RegistroView extends JFrame {
             return;
         }
 
-        // Crear el nuevo objeto Usuario
-        Usuario nuevoUsuario = new Usuario(username, password, role);
-
-        try {
-            // Registrar el usuario en la base de datos usando el método adecuado
-            boolean registrado = usuarioController.registrarUsuario(nuevoUsuario);
-
-            if (registrado) {
-                JOptionPane.showMessageDialog(this, "Usuario registrado exitosamente.");
-                dispose(); // Cerrar la ventana de registro
-            } else {
-                JOptionPane.showMessageDialog(this, "El usuario ya existe.");
+        // Determinar el rol y crear el objeto correspondiente
+        if (roleString.equalsIgnoreCase("admin")) {
+            try {
+                Administrador nuevoAdministrador = new Administrador(username, password);
+                boolean registrado = usuarioController.registrarAdministrador(nuevoAdministrador);
+                if (registrado) {
+                    JOptionPane.showMessageDialog(this, "Administrador registrado exitosamente.");
+                    dispose(); // Cerrar la ventana de registro
+                } else {
+                    JOptionPane.showMessageDialog(this, "El administrador ya existe.");
+                }
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage());
             }
-        } catch (IllegalArgumentException ex) {
-            // Si los campos no son válidos, mostrar un mensaje de error
-            JOptionPane.showMessageDialog(this, ex.getMessage());
+        } else if (roleString.equalsIgnoreCase("vendedor")) {
+            try {
+                Vendedor nuevoVendedor = new Vendedor(username, password);
+                boolean registrado = usuarioController.registrarVendedor(nuevoVendedor);
+                if (registrado) {
+                    JOptionPane.showMessageDialog(this, "Vendedor registrado exitosamente.");
+                    dispose(); // Cerrar la ventana de registro
+                } else {
+                    JOptionPane.showMessageDialog(this, "El vendedor ya existe.");
+                }
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage());
+            }
         }
     }
 }

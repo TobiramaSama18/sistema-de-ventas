@@ -4,13 +4,15 @@ import controller.SesionController;
 import model.BaseDatos;
 import model.Venta;
 import model.Vendedor;
-import model.Venta.FormaDePago;
+import model.FormaDePago;
+import model.Producto;
 
+import java.util.ArrayList;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
+import java.math.BigDecimal;
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
 public class SistemaVentasView extends JFrame {
@@ -34,6 +36,7 @@ public class SistemaVentasView extends JFrame {
         this.vendedor = vendedor;
         this.ventas = new ArrayList<>();
 
+        // Configuración de la ventana
         setTitle("Sistema de Ventas - Vendedor: " + vendedor.getNombre());
         setSize(800, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -98,7 +101,7 @@ public class SistemaVentasView extends JFrame {
         });
 
         // Botón para guardar las ventas
-        JButton guardarVentaButton = new JButton("Guardar Venta");
+        JButton guardarVentaButton = new JButton("Guardar y Imprimir");
         guardarVentaButton.setBounds(190, 190, 150, 30);
         datosPanel.add(guardarVentaButton);
         guardarVentaButton.addActionListener(new ActionListener() {
@@ -145,7 +148,7 @@ public class SistemaVentasView extends JFrame {
 
         // Botón para cerrar sesión
         JButton cerrarSesionButton = new JButton("Cerrar Sesión");
-        cerrarSesionButton.setBounds(650, 500, 120, 30);
+        cerrarSesionButton.setBounds(650, 500, 120, 30); // Este botón se mantiene en su posición original
         add(cerrarSesionButton);
         cerrarSesionButton.addActionListener(new ActionListener() {
             @Override
@@ -160,22 +163,34 @@ public class SistemaVentasView extends JFrame {
         tablaScrollPane.setBounds(20, 300, 730, 150);
         add(tablaScrollPane);
 
+        // Botón para mostrar la boleta generada
+        JButton mostrarBoletaButton = new JButton("Mostrar Boleta");
+        mostrarBoletaButton.setBounds(400, 400, 150, 30);
+        add(mostrarBoletaButton);
+        mostrarBoletaButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mostrarBoleta();
+            }
+        });
+
         setLocationRelativeTo(null); // Centrar la ventana
     }
 
     private void registrarVenta() {
         try {
-            String producto = productoTextField.getText();
+            String productoNombre = productoTextField.getText();
             int cantidad = Integer.parseInt(cantidadTextField.getText());
             double precioUnitario = Double.parseDouble(precioUnitarioTextField.getText());
 
-            // Crear una venta temporal y agregarla a la lista de ventas
-            FormaDePago formaDePago = FormaDePago.efectivo; // Asume que la forma de pago es 'efectivo' por defecto
-            Venta ventaTemporal = new Venta(producto, cantidad, precioUnitario, vendedor, formaDePago);
+            // Crear objeto Producto y Venta
+            Producto producto = new Producto(productoNombre, productoNombre, BigDecimal.valueOf(precioUnitario), cantidad);
+            FormaDePago formaDePago = FormaDePago.EFECTIVO; // Forma de pago predeterminada (se actualizará después)
+            Venta ventaTemporal = new Venta("COD123", producto, cantidad, BigDecimal.valueOf(precioUnitario), vendedor, formaDePago);
             ventas.add(ventaTemporal);
 
             // Actualizar el total de la venta
-            totalField.setText(String.valueOf(ventaTemporal.getTotal()));
+            actualizarTotalGeneral();
 
             // Limpiar los campos de entrada
             productoTextField.setText("");
@@ -191,11 +206,22 @@ public class SistemaVentasView extends JFrame {
         }
     }
 
+    private void actualizarTotalGeneral() {
+        // Calcular el total general de todas las ventas
+        double totalGeneral = 0;
+        for (Venta venta : ventas) {
+            totalGeneral += venta.getTotal().doubleValue();
+        }
+
+        // Actualizar el campo de texto con el total general
+        totalField.setText(String.valueOf(totalGeneral));
+    }
+
     private void actualizarTabla() {
         String[][] data = new String[ventas.size()][4];
         for (int i = 0; i < ventas.size(); i++) {
             Venta venta = ventas.get(i);
-            data[i][0] = venta.getProducto();
+            data[i][0] = venta.getProducto().getNombre();
             data[i][1] = String.valueOf(venta.getCantidad());
             data[i][2] = String.valueOf(venta.getPrecioUnitario());
             data[i][3] = String.valueOf(venta.getTotal());
@@ -204,83 +230,109 @@ public class SistemaVentasView extends JFrame {
         ventasTable.setModel(new javax.swing.table.DefaultTableModel(data, new String[] {"Producto", "Cantidad", "Precio Unitario", "Total"}));
     }
 
+    private void mostrarBoleta() {
+        // Crear y mostrar la boleta en una nueva ventana
+        BoletaView boletaView = new BoletaView(ventas);
+        boletaView.setVisible(true);
+    }
+
     private void guardarVenta() {
         if (!ventas.isEmpty()) {
+            // Verificamos si las ventas han sido pagadas antes de guardarlas
+            boolean ventasPagadas = true;
             for (Venta venta : ventas) {
-                baseDatos.agregarVenta(venta); // Guardar en la base de datos
+                if (venta.getFormaDePago() == null) {
+                    ventasPagadas = false;
+                    break;
+                }
             }
 
-            String boleta = generarBoleta();
-            JOptionPane.showMessageDialog(this, boleta, "Boleta de Venta", JOptionPane.INFORMATION_MESSAGE);
+            if (ventasPagadas) {
+                // Guardar las ventas en la base de datos
+                for (Venta venta : ventas) {
+                    baseDatos.agregarVenta(venta); // Guardar en la base de datos
+                }
 
-            ventas.clear();
-            totalField.setText(""); // Limpiar total
-            actualizarTabla();
+                // Preguntar al usuario si desea ver la boleta
+                int respuesta = JOptionPane.showConfirmDialog(this, "¿Deseas ver la boleta de la venta?", "Confirmar", JOptionPane.YES_NO_OPTION);
+                if (respuesta == JOptionPane.YES_OPTION) {
+                    // Crear y mostrar la boleta si el usuario acepta
+                    mostrarBoleta();
+                }
+
+                // Limpiar las ventas, total y actualizar la tabla
+                ventas.clear();
+                totalField.setText(""); // Limpiar total
+                actualizarTabla();
+
+                JOptionPane.showMessageDialog(this, "Ventas guardadas correctamente.");
+            } else {
+                JOptionPane.showMessageDialog(this, "Debe realizar el pago antes de guardar la venta.", "Advertencia", JOptionPane.WARNING_MESSAGE);
+            }
         } else {
             JOptionPane.showMessageDialog(this, "No hay ventas registradas para guardar.", "Advertencia", JOptionPane.WARNING_MESSAGE);
         }
     }
 
-    private String generarBoleta() {
-        StringBuilder boleta = new StringBuilder("BOLETA DE VENTA\n");
-        boleta.append("Vendedor: ").append(vendedor.getNombre()).append("\n\n");
-        double totalGeneral = 0;
-
-        for (Venta venta : ventas) {
-            boleta.append("Producto: ").append(venta.getProducto()).append("\n")
-                  .append("Cantidad: ").append(venta.getCantidad()).append("\n")
-                  .append("Precio Unitario: ").append(venta.getPrecioUnitario()).append("\n")
-                  .append("Total: ").append(venta.getTotal()).append("\n\n");
-            totalGeneral += venta.getTotal();
-        }
-
-        boleta.append("TOTAL GENERAL: ").append(totalGeneral).append("\n");
-        return boleta.toString();
-    }
-
     private void pagarEfectivo() {
         try {
-            double total = Double.parseDouble(totalField.getText());
-            double efectivo = Double.parseDouble(JOptionPane.showInputDialog(this, "Ingrese el monto en efectivo:"));
-
-            if (efectivo >= total) {
-                double cambio = efectivo - total;
-                JOptionPane.showMessageDialog(this, "Pago realizado con éxito. Cambio: " + cambio);
-            } else {
-                JOptionPane.showMessageDialog(this, "El efectivo ingresado es insuficiente.", "Error", JOptionPane.ERROR_MESSAGE);
+            // Obtener el total general
+            BigDecimal total = BigDecimal.valueOf(Double.parseDouble(totalField.getText()));
+            double efectivo = Double.parseDouble(JOptionPane.showInputDialog("Ingrese el monto entregado por el cliente:"));
+            if (efectivo < total.doubleValue()) {
+                JOptionPane.showMessageDialog(this, "El monto entregado es insuficiente.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Por favor, ingrese un monto válido.", "Error", JOptionPane.ERROR_MESSAGE);
+
+            BigDecimal cambio = BigDecimal.valueOf(efectivo - total.doubleValue());
+            JOptionPane.showMessageDialog(this, "Pago realizado con éxito. El cambio es: " + cambio);
+
+            // Actualizar la forma de pago para las ventas
+            for (Venta venta : ventas) {
+                venta.setFormaDePago(FormaDePago.EFECTIVO);
+            }
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Error al ingresar el monto de efectivo.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void pagarTarjeta() {
-        try {
-            double total = Double.parseDouble(totalField.getText());
-            JOptionPane.showMessageDialog(this, "Pago realizado con tarjeta. Total: " + total);
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Por favor, ingrese un monto válido.", "Error", JOptionPane.ERROR_MESSAGE);
+        for (Venta venta : ventas) {
+            venta.setFormaDePago(FormaDePago.TARJETA);
         }
+        guardarVenta();
     }
 
     private void pagarMixto() {
         try {
+            double efectivo = Double.parseDouble(JOptionPane.showInputDialog("Ingrese el monto pagado en efectivo:"));
+            double tarjeta = Double.parseDouble(JOptionPane.showInputDialog("Ingrese el monto pagado con tarjeta:"));
             double total = Double.parseDouble(totalField.getText());
-            double efectivo = Double.parseDouble(JOptionPane.showInputDialog(this, "Ingrese el monto en efectivo:"));
-            double tarjeta = total - efectivo;
-
-            if (efectivo >= 0) {
-                JOptionPane.showMessageDialog(this, "Pago mixto realizado con éxito. Efectivo: " + efectivo + " y Tarjeta: " + tarjeta);
-            } else {
-                JOptionPane.showMessageDialog(this, "El efectivo ingresado es insuficiente.", "Error", JOptionPane.ERROR_MESSAGE);
+            if (efectivo + tarjeta < total) {
+                JOptionPane.showMessageDialog(this, "El monto total ingresado es insuficiente.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Por favor, ingrese un monto válido.", "Error", JOptionPane.ERROR_MESSAGE);
+
+            // Actualizar la forma de pago para las ventas
+            for (Venta venta : ventas) {
+                venta.setFormaDePago(FormaDePago.MIXTO);
+            }
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Error al ingresar los montos.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+   private void cerrarSesion() {
+        int opcion = JOptionPane.showConfirmDialog(this, "¿Estás seguro que deseas cerrar sesión?", "Cerrar Sesión", JOptionPane.YES_NO_OPTION);
+        if (opcion == JOptionPane.YES_OPTION) {
+            this.dispose(); // Cierra la ventana actual (de ventas)
+
+            // Crear y mostrar la ventana de login
+            LoginView loginView = new LoginView(baseDatos, sesionController); // Suponiendo que LoginView requiere estos parámetros
+            loginView.setVisible(true);
         }
     }
 
-    private void cerrarSesion() {
-        // Aquí iría el código para cerrar la sesión y volver a la pantalla de inicio de sesión
-        System.exit(0);
-    }
 }

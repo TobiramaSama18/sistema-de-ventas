@@ -1,8 +1,9 @@
 package model;
 
 public enum Role {
-    ADMIN("admin"),
-    VENDEDOR("vendedor");
+    ADMINISTRADOR("admin"),  // Cambio de 'ADMIN' a 'ADMINISTRADOR'
+    VENDEDOR("vendedor"),
+    USUARIO("usuario");
 
     private final String role;
 
@@ -14,4 +15,3 @@ public enum Role {
         return role;
     }
 }
-

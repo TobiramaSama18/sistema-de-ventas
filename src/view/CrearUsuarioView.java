@@ -1,7 +1,11 @@
 package view;
 
 import controller.UsuarioController;
-import model.Usuario;
+import model.Vendedor;  // Importamos Vendedor
+import model.Administrador;  // Importamos Administrador
+import model.Role;
+import model.BaseDatos;
+import controller.SesionController;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -16,10 +20,17 @@ public class CrearUsuarioView extends JFrame {
     private JButton cancelarButton;
 
     private UsuarioController usuarioController;
+    private BaseDatos baseDatos;  // Debes pasar esta instancia a la vista
+    private SesionController sesionController;  // Debes pasar esta instancia a la vista
+
+    private LoginView loginView;  // Se añade referencia a la vista de login para redirigir al login después del registro
 
     // Constructor para la vista de creación de usuario
-    public CrearUsuarioView(UsuarioController usuarioController) {
+    public CrearUsuarioView(UsuarioController usuarioController, BaseDatos baseDatos, SesionController sesionController, LoginView loginView) {
         this.usuarioController = usuarioController;
+        this.baseDatos = baseDatos;
+        this.sesionController = sesionController;
+        this.loginView = loginView;  // Inicializamos la vista de login
 
         // Configuración de la ventana
         setTitle("Registrar Usuario");
@@ -96,7 +107,7 @@ public class CrearUsuarioView extends JFrame {
     private void registrarUsuario() {
         String username = usernameField.getText();
         String password = new String(passwordField.getPassword());
-        String rol = (String) rolComboBox.getSelectedItem();
+        String rolString = (String) rolComboBox.getSelectedItem();
 
         // Verificar que los campos no estén vacíos
         if (username.isEmpty() || password.isEmpty()) {
@@ -104,23 +115,65 @@ public class CrearUsuarioView extends JFrame {
             return;
         }
 
-        // Crear el objeto Usuario con los datos ingresados
-        Usuario nuevoUsuario = new Usuario(username, password, rol);
+        // Verificar si el usuario ya existe
+        if (usuarioController.obtenerVendedorPorUsername(username) != null || usuarioController.obtenerAdministradorPorUsername(username) != null) {
+            JOptionPane.showMessageDialog(this, "El nombre de usuario ya existe. Intente con otro.");
+            return;
+        }
 
-        // Llamar al controlador para registrar el usuario
+        // Convertir el rol a la enumeración Role
+        Role role = null;
         try {
-            boolean registrado = usuarioController.registrarUsuario(nuevoUsuario);
-
-            // Mostrar mensaje según el resultado del registro
-            if (registrado) {
-                JOptionPane.showMessageDialog(this, "Usuario registrado exitosamente.");
-                dispose(); // Cerrar la ventana después del registro
-            } else {
-                JOptionPane.showMessageDialog(this, "El nombre de usuario ya existe. Intente con otro.");
+            // Mapear el string del combo box a Role
+            if (rolString.equalsIgnoreCase("admin")) {
+                role = Role.ADMINISTRADOR;  // Mapeamos "admin" a ADMINISTRADOR
+            } else if (rolString.equalsIgnoreCase("vendedor")) {
+                role = Role.VENDEDOR;  // Mapeamos "vendedor" a VENDEDOR
             }
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage());
+
+            // Verificar que el rol no sea nulo
+            if (role == null) {
+                JOptionPane.showMessageDialog(this, "Rol inválido seleccionado.");
+                return;
+            }
+
+            // Crear un nuevo Vendedor o Administrador dependiendo del rol
+            if (role == Role.ADMINISTRADOR) {
+                Administrador nuevoAdministrador = new Administrador(username, password);
+                // Llamar al controlador para registrar el administrador
+                boolean registrado = usuarioController.registrarAdministrador(nuevoAdministrador);
+                if (registrado) {
+                    JOptionPane.showMessageDialog(this, "Administrador registrado exitosamente.");
+                    redirigirAlSistema(nuevoAdministrador);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Hubo un error al registrar el administrador. Intente nuevamente.");
+                }
+            } else if (role == Role.VENDEDOR) {
+                Vendedor nuevoVendedor = new Vendedor(username, password);
+                // Llamar al controlador para registrar el vendedor
+                boolean registrado = usuarioController.registrarVendedor(nuevoVendedor);
+                if (registrado) {
+                    JOptionPane.showMessageDialog(this, "Vendedor registrado exitosamente.");
+                    redirigirAlSistema(nuevoVendedor);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Hubo un error al registrar el vendedor. Intente nuevamente.");
+                }
+            }
+
+            // No es necesario llamar dispose aquí, ya que las vistas de redirección manejarán el cierre
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al registrar el usuario: " + ex.getMessage());
         }
     }
-}
 
+    // Método para redirigir al sistema correspondiente según el rol
+    private void redirigirAlSistema(Administrador nuevoAdministrador) {
+        dispose(); // Cerrar ventana de registro
+        loginView.setVisible(true); // Volver a mostrar el login después del registro
+    }
+
+    private void redirigirAlSistema(Vendedor nuevoVendedor) {
+        dispose(); // Cerrar ventana de registro
+        loginView.setVisible(true); // Volver a mostrar el login después del registro
+    }
+}

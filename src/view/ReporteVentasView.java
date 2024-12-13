@@ -1,108 +1,113 @@
 package view;
 
-import controller.SesionController;
-import model.BaseDatos;
-import model.Venta;
-
 import javax.swing.*;
-import java.awt.*;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import javax.swing.table.DefaultTableModel;
+import model.BaseDatos;
+import controller.SesionController;
+import model.Venta;
+import model.Producto;
+import java.awt.print.PrinterJob;
+import java.awt.print.PrinterException;
+import java.time.format.DateTimeFormatter;
 
 public class ReporteVentasView extends JFrame {
+    private JTable ventasTable;
+    private JButton imprimirButton; // Botón para imprimir
+    private JButton okButton; // Botón para regresar al sistema del administrador
+    private DefaultTableModel tableModel;
 
     private BaseDatos baseDatos;
     private SesionController sesionController;
+    private SistemaAdministradorView ventanaAdministrador; // Referencia a la ventana del administrador
 
-    public ReporteVentasView(BaseDatos baseDatos, SesionController sesionController) {
+    // Constructor para mostrar el reporte
+    public ReporteVentasView(BaseDatos baseDatos, SesionController sesionController, DefaultTableModel tableModel, SistemaAdministradorView ventanaAdministrador) {
         this.baseDatos = baseDatos;
         this.sesionController = sesionController;
+        this.tableModel = tableModel;
+        this.ventanaAdministrador = ventanaAdministrador; // Asignar la referencia de la ventana del administrador
 
+        // Configuración de la ventana de reporte
         setTitle("Reporte de Ventas");
         setSize(600, 400);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLayout(null);
 
-        // Crear panel para contener los componentes
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
+        // Etiqueta de título
+        JLabel tituloLabel = new JLabel("Reporte de Ventas");
+        tituloLabel.setBounds(20, 20, 200, 25);
+        add(tituloLabel);
 
-        // Crear un botón para generar el reporte
-        JButton generarReporteButton = new JButton("Generar Reporte");
-        generarReporteButton.addActionListener(e -> generarReporte());
-        
-        // Crear área de texto para mostrar el reporte
-        JTextArea reporteTextArea = new JTextArea();
-        reporteTextArea.setEditable(false);  // Hacer el JTextArea no editable
-        reporteTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        
-        // Crear un JScrollPane para permitir desplazamiento en el reporte
-        JScrollPane scrollPane = new JScrollPane(reporteTextArea);
-        scrollPane.setPreferredSize(new Dimension(500, 300));
+        // Configuración de la tabla de ventas
+        ventasTable = new JTable(tableModel);
+        JScrollPane scrollPane = new JScrollPane(ventasTable);
+        scrollPane.setBounds(20, 50, 540, 250);
+        add(scrollPane);
 
-        // Agregar los componentes al panel
-        panel.add(generarReporteButton, BorderLayout.NORTH);
-        panel.add(scrollPane, BorderLayout.CENTER);
+        // Botón para imprimir
+        imprimirButton = new JButton("Imprimir");
+        imprimirButton.setBounds(200, 320, 120, 25);
+        add(imprimirButton);
+        imprimirButton.addActionListener(e -> imprimirVentas());
 
-        // Agregar el panel al JFrame
-        add(panel);
+        // Botón "OK" para regresar al sistema del administrador
+        okButton = new JButton("OK");
+        okButton.setBounds(340, 320, 120, 25);
+        add(okButton);
+        okButton.addActionListener(e -> regresarAlSistemaAdministrador());
 
         // Centrar la ventana
         setLocationRelativeTo(null);
 
-        // Hacer visible la ventana
+        // Mostrar la ventana
         setVisible(true);
     }
 
-    ReporteVentasView(BaseDatos baseDatos) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-
-    // Método para generar el reporte de ventas
-    void generarReporte() {
-        StringBuilder reporte = new StringBuilder();
-        
-        // Obtener la fecha y hora actual para el reporte
-        String fecha = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date());
-        
-        // Escribir el encabezado del reporte
-        reporte.append("Reporte de Ventas\n");
-        reporte.append("Fecha de Generación: ").append(fecha).append("\n");
-        reporte.append("-------------------------\n");
-        reporte.append(String.format("%-20s %-10s %-20s %-10s\n", "Producto", "Cantidad", "Precio Unitario", "Total"));
-
-        // Escribir los datos de las ventas
-        double totalGeneral = 0;
-        for (Venta venta : baseDatos.getVentas()) {
-            reporte.append(String.format("%-20s %-10d %-20.2f %-10.2f\n",
-                    venta.getProducto(), venta.getCantidad(), venta.getPrecioUnitario(), venta.getTotal()));
-            totalGeneral += venta.getTotal();
+    // Método para imprimir la tabla de ventas
+    private void imprimirVentas() {
+        PrinterJob printerJob = PrinterJob.getPrinterJob();
+        if (printerJob.printDialog()) {
+            try {
+                ventasTable.print(); // Imprimir la tabla de ventas
+            } catch (PrinterException e) {
+                JOptionPane.showMessageDialog(this, "Error al intentar imprimir: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
-
-        // Escribir el total general
-        reporte.append("-------------------------\n");
-        reporte.append(String.format("TOTAL GENERAL: %.2f\n", totalGeneral));
-        reporte.append("-------------------------\n");
-        reporte.append("¡Gracias por usar el sistema!");
-
-        // Actualizar el JTextArea con el reporte generado
-        JTextArea reporteTextArea = new JTextArea(reporte.toString());
-        reporteTextArea.setEditable(false);  // Hacer el JTextArea no editable
-        reporteTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-
-        // Crear un JScrollPane para permitir desplazamiento en el reporte
-        JScrollPane scrollPane = new JScrollPane(reporteTextArea);
-        scrollPane.setPreferredSize(new Dimension(500, 300));
-
-        // Mostrar el reporte en un cuadro de diálogo
-        JOptionPane.showMessageDialog(this, scrollPane, "Reporte de Ventas", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    public static void main(String[] args) {
-        // Inicializar la base de datos y el controlador de sesión, luego mostrar la vista
-        SwingUtilities.invokeLater(() -> {
-            BaseDatos baseDatos = new BaseDatos();  // Suponiendo que BaseDatos tiene un constructor por defecto
-            SesionController sesionController = new SesionController(baseDatos);
-            new ReporteVentasView(baseDatos, sesionController);
-        });
+    // Método para regresar al sistema del administrador
+    private void regresarAlSistemaAdministrador() {
+        // Regresar al sistema del administrador sin abrir una nueva ventana
+        // Simplemente ocultamos la ventana actual (reporte de ventas) y mostramos la ventana principal del administrador
+        setVisible(false); // Ocultar la ventana de reporte de ventas
+        ventanaAdministrador.setVisible(true); // Mostrar la ventana del administrador
+        dispose(); // Liberar la memoria de la ventana de reporte
+    }
+
+    // Método para actualizar la tabla con las ventas más recientes
+    public void actualizarTablaVentas() {
+        // Limpiar la tabla antes de cargar los nuevos datos
+        tableModel.setRowCount(0);
+
+        // Formato de fecha
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        // Obtener las ventas más recientes y agregarlas a la tabla
+        for (Venta venta : baseDatos.getVentas()) {
+            String fechaVenta = venta.getFechaHora().format(formatter);  // Formatear la fecha
+
+            for (Producto producto : venta.getProductos()) {
+                // Agregar las filas correspondientes a la tabla
+                Object[] row = {
+                    venta.getVendedor().getNombre(),  // Vendedor
+                    producto.getDescripcion(),        // Producto
+                    producto.getCantidad(),           // Cantidad
+                    producto.getPrecio(),             // Precio Unitario
+                    fechaVenta,                       // Fecha
+                    producto.getCantidad() * producto.getPrecio().doubleValue()  // Total
+                };
+                tableModel.addRow(row);
+            }
+        }
     }
 }

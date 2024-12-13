@@ -6,137 +6,130 @@ import java.util.List;
 import java.util.Map;
 
 public class BaseDatos {
-    private Map<String, Usuario> usuarios;     // Mapa para gestionar los usuarios
-    private Map<String, Vendedor> vendedores;  // Mapa para gestionar los vendedores
-    private Map<String, Venta> ventas;         // Mapa para gestionar las ventas
-
-    private List<Usuario> listaUsuarios;       // Lista para usuarios (también para verificación)
-    private List<Vendedor> listaVendedores;    // Lista para los vendedores
+    private Map<String, Vendedor> vendedores;      // Mapa para gestionar los vendedores
+    private List<Venta> ventas;                    // Lista para gestionar las ventas
+    private Map<String, Administrador> administradores;  // Mapa para gestionar los administradores
 
     public BaseDatos() {
-        usuarios = new HashMap<>();
         vendedores = new HashMap<>();
-        ventas = new HashMap<>();
-        
-        listaUsuarios = new ArrayList<>();
-        listaVendedores = new ArrayList<>();
+        ventas = new ArrayList<>();
+        administradores = new HashMap<>();
 
-        // Crear algunos usuarios de ejemplo
-        Usuario admin = new Usuario("admin", "1234", "admin");
-        Usuario adrian = new Usuario("adrian", "1234", "vendedor");
-        usuarios.put("admin", admin);
-        usuarios.put("adrian", adrian);
-        listaUsuarios.add(admin);
-        listaUsuarios.add(adrian);
+        // Crear un administrador por defecto
+        Administrador administrador = new Administrador("admin", "1234");
+        administradores.put("admin", administrador);
 
-        // Crear algunos vendedores de ejemplo
-        Vendedor vendedor = new Vendedor("adrian", "1234", "vendedor", "Vendedor de tienda");
+        // Crear un vendedor por defecto (se asume que Vendedor tiene un constructor con 2 parámetros)
+        Vendedor vendedor = new Vendedor("adrian", "1234");  // Solo dos parámetros en el constructor
+        vendedor.setDescripcion("Vendedor experimentado");   // Esto asume que el método setDescripcion existe en la clase Vendedor
         vendedores.put("adrian", vendedor);
-        listaVendedores.add(vendedor);
     }
 
-    /**
-     * Método para autenticar a un usuario con su nombre y contraseña.
-     * @param username el nombre de usuario.
-     * @param password la contraseña del usuario.
-     * @return el usuario autenticado si las credenciales son correctas, null en caso contrario.
-     */
-    public Usuario autenticar(String username, String password) {
-        Usuario user = usuarios.get(username); // Buscar al usuario por su nombre
-        if (user != null && user.getPassword().equals(password)) {
-            return user; // Si existe y la contraseña es correcta, retornar el usuario
+    
+    //Método para obtener un Administrador por credenciales.
+    private Administrador obtenerAdministradorPorCredenciales(String username, String password) {
+        Administrador administrador = administradores.get(username);
+        if (administrador != null && administrador.getPassword().equals(password)) {
+            return administrador;
         }
-        return null; // Si no existe o la contraseña es incorrecta, retornar null
+        return null;
     }
 
-    /**
-     * Obtener un vendedor asociado a un usuario.
-     * @param usuario el usuario cuyo vendedor se quiere obtener.
-     * @return el vendedor asociado al usuario.
-     */
-    public Vendedor obtenerVendedorPorUsuario(Usuario usuario) {
-        if (usuario == null) {
-            return null; // Validación de si el usuario es null
+    
+     //Método para obtener un Vendedor por credenciales.
+    private Vendedor obtenerVendedorPorCredenciales(String username, String password) {
+        Vendedor vendedor = vendedores.get(username);
+        if (vendedor != null && vendedor.getPassword().equals(password)) {
+            return vendedor;
         }
-        return vendedores.get(usuario.getUsername()); // Retorna el vendedor correspondiente al nombre de usuario
+        return null;
     }
 
-    /**
-     * Obtener un usuario por su nombre.
-     * @param nombreUsuario el nombre de usuario.
-     * @return el usuario o null si no existe.
-     */
-    public Usuario obtenerUsuario(String nombreUsuario) {
-        return usuarios.get(nombreUsuario); // Retorna el usuario o null si no existe
-    }
-
-    /**
-     * Registrar un nuevo usuario.
-     * @param usuario el usuario a registrar.
-     * @return true si el usuario se registró correctamente, false si ya existe.
-     */
-    public boolean registrarUsuario(Usuario usuario) {
-        if (usuarios.containsKey(usuario.getUsername())) {
-            return false; // Si el usuario ya existe, no lo agrega
+        //Método para autenticar a un vendedor o administrador con su nombre y contraseña.
+    public Object autenticar(String username, String password) {
+        // Verificar si es administrador
+        Administrador admin = obtenerAdministradorPorCredenciales(username, password);
+        if (admin != null) {
+            return admin;
         }
-        usuarios.put(usuario.getUsername(), usuario); // Agrega el nuevo usuario
-        listaUsuarios.add(usuario); // También lo agrega a la lista
-        return true;
+
+        // Verificar si es vendedor
+        Vendedor vendedor = obtenerVendedorPorCredenciales(username, password);
+        if (vendedor != null) {
+            return vendedor;
+        }
+
+        return null;  // Si no se encuentra el usuario o la contraseña es incorrecta
     }
 
-    /**
-     * Agregar una nueva venta.
-     * @param venta la venta a agregar.
-     */
+    //Agregar una nueva venta.
     public void agregarVenta(Venta venta) {
-        if (venta == null || ventas.containsKey(venta.getCodigo())) {
-            return; // Validar si la venta ya existe o si es null
+        if (venta != null) {
+            ventas.add(venta);
         }
-        ventas.put(venta.getCodigo(), venta); // Usar el código de la venta como clave
     }
 
-    /**
-     * Obtener una venta por su código.
-     * @param codigoVenta el código de la venta.
-     * @return la venta correspondiente al código.
-     */
-    public Venta obtenerVenta(String codigoVenta) {
-        return ventas.get(codigoVenta); // Obtener la venta por su código
+
+     //Obtener una venta por su posición en la lista.
+    public Venta obtenerVenta(int index) {
+        if (index >= 0 && index < ventas.size()) {
+            return ventas.get(index);
+        }
+        return null;
     }
 
-    /**
-     * Obtener todas las ventas como lista.
-     * @return una lista con todas las ventas.
-     */
+    //Obtener todas las ventas como lista.
     public List<Venta> getVentas() {
-        return new ArrayList<>(ventas.values()); // Convertir las ventas a una lista
+        return ventas;
     }
 
-    /**
-     * Obtener la última venta registrada.
-     * @return la última venta o null si no hay ventas.
-     */
+    //Obtener la última venta registrada.
     public Venta getUltimaVenta() {
         if (ventas.isEmpty()) {
-            return null; // Si no hay ventas, retornar null
+            return null;
         }
-        // Iterar sobre las ventas para obtener la última
-        return ventas.values().stream().reduce((first, second) -> second).orElse(null);
+        return ventas.get(ventas.size() - 1);
     }
 
-    /**
-     * Obtener todos los vendedores.
-     * @return la lista de vendedores.
-     */
+    //Obtener todos los vendedores.
     public List<Vendedor> getVendedores() {
-        return listaVendedores; // Retorna la lista de vendedores
+        return new ArrayList<>(vendedores.values());
     }
 
-    /**
-     * Obtener todos los usuarios.
-     * @return la lista de usuarios.
-     */
-    public List<Usuario> getUsuarios() {
-        return listaUsuarios; // Retorna la lista de usuarios
+    //Obtener todos los administradores.
+    public List<Administrador> getAdministradores() {
+        return new ArrayList<>(administradores.values());
+    }
+
+
+    //Registrar un nuevo vendedor.
+    public void registrarVendedor(Vendedor vendedor) {
+        if (vendedor != null) {
+            vendedores.put(vendedor.getUsername(), vendedor);
+        }
+    }
+
+   //Registrar un nuevo administrador.
+    public void registrarAdministrador(Administrador administrador) {
+        if (administrador != null) {
+            administradores.put(administrador.getUsername(), administrador);
+        }
+    }
+
+    // Método para guardar ventas
+    public void guardarVentas(ArrayList<Venta> ventas) {
+        if (ventas != null) {
+            // Añadir todas las ventas a la lista interna
+            this.ventas.addAll(ventas);
+        }
+    }
+
+    // Métodos para obtener Vendedores y Administradores por username
+    public Vendedor obtenerVendedor(String username) {
+        return vendedores.get(username);
+    }
+
+    public Administrador obtenerAdministrador(String username) {
+        return administradores.get(username);
     }
 }

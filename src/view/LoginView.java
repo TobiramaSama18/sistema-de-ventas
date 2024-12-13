@@ -3,12 +3,11 @@ package view;
 import controller.SesionController;
 import controller.UsuarioController;
 import model.BaseDatos;
-import model.Usuario;
+import model.Administrador;
 import model.Vendedor;
-import model.Role;
-
 import javax.swing.*;
 import java.awt.*;
+
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
 public class LoginView extends JFrame {
@@ -73,24 +72,22 @@ public class LoginView extends JFrame {
             String password = new String(passwordField.getPassword());
 
             // Intentar autenticar al usuario
-            Usuario usuario = baseDatos.autenticar(username, password);
+            Object usuario = baseDatos.autenticar(username, password);
 
             if (usuario != null) {
-                sesionController.iniciarSesion(usuario);  // Iniciar sesión del usuario
+                // Iniciar sesión del usuario
+                if (usuario instanceof Vendedor) {
+                    sesionController.iniciarSesion((Vendedor) usuario);  // Iniciar sesión del vendedor
+                } else if (usuario instanceof Administrador) {
+                    sesionController.iniciarSesion((Administrador) usuario);  // Iniciar sesión del administrador
+                }
+
                 dispose();  // Cerrar la ventana de login
 
-                System.out.println("Usuario autenticado: " + usuario.getUsername());
+                System.out.println("Usuario autenticado: " + username);
 
-                // Comprobar el rol del usuario y redirigir según corresponda
-                if (Role.ADMIN.equals(usuario.getRole())) {
-                    // Redirigir a la vista del administrador
-                    new AdministradorView(baseDatos, sesionController).setVisible(true);  // Vista del administrador
-                } else if (Role.VENDEDOR.equals(usuario.getRole())) {
-                    // Crear un objeto Vendedor para pasarlo a SistemaVentasView
-                    Vendedor vendedor = new Vendedor(usuario.getUsername(), usuario.getPassword(), usuario.getRole(), "Descripción del Vendedor");
-                    // Redirigir al sistema de ventas del vendedor
-                    new SistemaVentasView(baseDatos, sesionController, vendedor).setVisible(true);  // Vista del vendedor
-                }
+                // Redirigir al sistema correspondiente según el rol
+                redirigirAlSistema(usuario);
             } else {
                 JOptionPane.showMessageDialog(this, "Credenciales incorrectas", "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -100,10 +97,29 @@ public class LoginView extends JFrame {
         }
     }
 
+    private void redirigirAlSistema(Object usuario) {
+        // Dependiendo del rol, se redirige a la vista correspondiente
+        if (usuario instanceof Administrador) {
+            // Crear un Usuario específico para el rol ADMINISTRADOR
+            Administrador admin = (Administrador) usuario;
+            SistemaAdministradorView adminView = new SistemaAdministradorView(baseDatos, sesionController, admin);
+            adminView.setVisible(true);  // Usar el 'usuario' para la vista de administrador
+        } else if (usuario instanceof Vendedor) {
+            // Verificar si el usuario es un Vendedor
+            Vendedor vendedor = (Vendedor) usuario;
+            SistemaVentasView ventasView = new SistemaVentasView(baseDatos, sesionController, vendedor);
+            ventasView.setVisible(true);  // Usar el 'vendedor' para la vista de ventas
+        } else {
+            JOptionPane.showMessageDialog(this, "Rol no reconocido.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     private void abrirCrearUsuario() {
         // Crear un controlador para la vista de creación de usuario
         UsuarioController usuarioController = new UsuarioController(baseDatos);
-        new CrearUsuarioView(usuarioController).setVisible(true);
+
+        // Ahora pasamos también los parámetros BaseDatos, SesionController y LoginView
+        new CrearUsuarioView(usuarioController, baseDatos, sesionController, this).setVisible(true);
     }
 
     public static void main(String[] args) {
